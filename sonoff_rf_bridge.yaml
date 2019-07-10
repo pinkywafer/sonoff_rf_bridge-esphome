@@ -1,0 +1,92 @@
+esphome:
+  name: sonoff_rf_bridge
+  platform: ESP8266
+  board: esp01_1m
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_psk
+  manual_ip:
+    static_ip: 192.168.1.99
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+web_server:
+  port: 80
+  
+sensor:
+  - platform: wifi_signal
+    name: Sonoff RF Bridge Wifi Signal
+    update_interval: 10s
+  - platform: uptime
+    name: Sonoff RF Bridge Uptime
+
+binary_sensor:
+  - platform: status
+    name: Sonoff RF Bridge Status
+
+  - platform: remote_receiver
+    name: Downstairs Motion
+    device_class: motion
+    rc_switch_raw:
+      code: '111010101000010110101100'
+      protocol: 1
+    filters:
+      delayed_off: 5s
+
+# door window
+  - platform: remote_receiver
+    id: door_window_open
+    internal: true
+    rc_switch_raw:
+      code: '010101000011111000001010'
+      protocol: 2
+    filters:
+      delayed_off: 100ms
+      
+  - platform: remote_receiver
+    id: door_window_closed
+    internal: true
+    rc_switch_raw:
+      code: '010101000011111000001110'
+      protocol: 2
+    filters:
+      delayed_off: 100ms
+      
+  - platform: template
+    name: Door Window
+    device_class: window
+    lambda: |-
+      if (id(door_window_open).state) {
+        // door window is open
+        return true;
+      } else if (id(door_window_closed).state) {
+        // door window closed
+        return false;
+      } else {
+        return {};
+      }
+
+remote_receiver:
+  pin: 4
+  dump: rc_switch
+  tolerance: 50
+  filter: 4us
+  idle: 4ms
+
+remote_transmitter:
+  pin: 5
+  carrier_duty_percent: 100%
+
+status_led:
+  pin:
+    number: GPIO13
+    inverted: yes
